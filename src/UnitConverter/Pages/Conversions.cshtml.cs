@@ -1,90 +1,108 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using UnitOf;
+using UnitConverter.Models;
 
-namespace UnitConverter.Pages;
-
-public class ConversionsModel : PageModel
+namespace UnitConverter.Pages
 {
-    [BindProperty(SupportsGet = true)] public string Input { get; set; } = string.Empty;
-
-    [BindProperty(SupportsGet = true)] public string ConversionType { get; set; } = string.Empty;
-
-    public string Output { get; set; } = string.Empty;
-
-    public void OnGet()
+    public class ConversionsModel : PageModel
     {
+        [BindProperty(SupportsGet = true)]
+        public string ConversionType { get; set; } = string.Empty;
 
-        if (string.IsNullOrWhiteSpace(ConversionType) &&
-            string.IsNullOrWhiteSpace(Input))
-        {
-            ConversionType = "MilesToKilometers";
-            Input = "3.1415";
-            ViewData["ConversionType"] = "Miles to Kilometers";
-        }
-        else
-        {
+        [BindProperty(SupportsGet = true)]
+        public string Input { get; set; } = string.Empty;
 
-            ViewData["ConversionType"] = ConversionType;
-        }
+        public string Output { get; set; } = string.Empty;
 
-        double value;
+        [BindProperty(SupportsGet = true)]
+        public ConversionModel Conversion { get; set; } = new();
 
-        try
+        public void OnGet()
         {
-            value = Convert.ToDouble(Input);
-        }
-        catch (Exception)
-        {
-            ViewData["ErrorMessage"] = "Input must be a valid number";
-            return;
-        }
-
-        double result;
-        try
-        {
-            switch (ConversionType)
+            if (string.IsNullOrWhiteSpace(ConversionType) &&
+                !string.IsNullOrWhiteSpace(Conversion.ConversionType))
             {
-                case "MilesToKilometers":
-                    result = new UnitOf.Length().FromMiles(value).ToKilometers();
-                    break;
-
-                case "KilometersToMiles":
-                    result = new UnitOf.Length().FromKilometers(value).ToMiles();
-                    break;
-
-                case "FahrenheitToCelsius":
-                    result = new UnitOf.Temperature().FromFahrenheit(value).ToCelsius();
-                    break;
-                case "CelsiusToFahrenheit":
-                    result = new UnitOf.Temperature().FromCelsius(value).ToFahrenheit();
-                    break;
-
-                case "PoundsToKilograms":
-                    result = new UnitOf.Mass().FromPounds(value).ToKilograms();
-                    break;
-                case "KilogramsToPounds":
-                    result = new UnitOf.Mass().FromKilograms(value).ToPounds();
-                    break;
-                case "FeetToMeters":
-                    result = new UnitOf.Length().FromFeet(value).ToMeters();
-                    break;
-                case "MetersToFeet":
-                    result = new UnitOf.Length().FromMeters(value).ToFeet();
-                    break;
-
-                default:
-                    ViewData["ErrorMessage"] = "Invalid conversion type";
-                    return;
+                ConversionType = Conversion.ConversionType;
             }
-        }
-        catch (Exception e)
-        {
-            ViewData["ErrorMessage"] = "Could not convert " + ConversionType;
-            return;
-        }
 
-        Output = result.ToString();
-        ViewData["Title"] = "Conversions";
+            if (string.IsNullOrWhiteSpace(Input) &&
+                !string.IsNullOrWhiteSpace(Conversion.Input))
+            {
+                Input = Conversion.Input;
+            }
+            if (string.IsNullOrWhiteSpace(ConversionType) &&
+                string.IsNullOrWhiteSpace(Input))
+            {
+                ConversionType = ConversionTypes.MilesToKilometers;
+                Input = "3.1415";
+            }
+
+            Conversion.ConversionType = ConversionType;
+            Conversion.Input = Input;
+
+            if (!ConversionTypes.All.TryGetValue(Conversion.ConversionType, out var displayName))
+            {
+                ViewData["ErrorMessage"] = "Unknown conversion type.";
+                ViewData["Title"] = "Conversions";
+                return;
+            }
+
+            ViewData["ConversionType"] = displayName;
+            ViewData["Title"] = "Conversions";
+
+            if (!double.TryParse(Conversion.Input, out var value))
+            {
+                ViewData["ErrorMessage"] = "Input must be a valid number.";
+                return;
+            }
+
+            double result;
+            try
+            {
+                switch (ConversionType.Trim())
+                {
+                    case ConversionTypes.MilesToKilometers:
+                        result = new UnitOf.Length().FromMiles(value).ToKilometers();
+                        break;
+
+                    case ConversionTypes.KilometersToMiles:
+                        result = new UnitOf.Length().FromKilometers(value).ToMiles();
+                        break;
+
+                    case ConversionTypes.FahrenheitToCelsius:
+                        result = new UnitOf.Temperature().FromFahrenheit(value).ToCelsius();
+                        break;
+                    case ConversionTypes.CelsiusToFahrenheit:
+                        result = new UnitOf.Temperature().FromCelsius(value).ToFahrenheit();
+                        break;
+
+                    case ConversionTypes.PoundsToKilograms:
+                        result = new UnitOf.Mass().FromPounds(value).ToKilograms();
+                        break;
+                    case ConversionTypes.KilogramsToPounds:
+                        result = new UnitOf.Mass().FromKilograms(value).ToPounds();
+                        break;
+                    case ConversionTypes.FeetToMeters:
+                        result = new UnitOf.Length().FromFeet(value).ToMeters();
+                        break;
+                    case ConversionTypes.MetersToFeet:
+                        result = new UnitOf.Length().FromMeters(value).ToFeet();
+                        break;
+
+                    default:
+                        ViewData["ErrorMessage"] = "Unknown conversion type.";
+                        return;
+                }
+            }
+            catch (Exception)
+            {
+                ViewData["ErrorMessage"] = $"Could not convert using {Conversion.ConversionType}.";
+                return;
+            }
+
+            Output = result.ToString();
+            Conversion.Output = Output;
+
+        }
     }
 }
